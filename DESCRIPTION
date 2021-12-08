@@ -1,0 +1,10 @@
+Package: SeuratAddons
+Title: Auxillary Functions for Seurat 
+Version: 0.0.0.9000
+Authors@R: 
+    person("Reed", "Crocker", , "rwcrocker1@gmail.com", role = c("aut", "cre"))
+Description: This package adds additional function for quality of life and additional plotting options for the popular single-cell genomics package, Seurat.
+License: use_mit_license()
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
