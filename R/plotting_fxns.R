@@ -310,7 +310,7 @@ plot_composition = function(obj,
 
   # Final merged plot
   final = plot_grid(plotlist = final_plots, nrow = 1, rel_widths = c(2, 1, (1 + num_comparisons), 2))
-  print(final)
+  return(final)
 
   # Make raw data frames available
   if (temp_out){
