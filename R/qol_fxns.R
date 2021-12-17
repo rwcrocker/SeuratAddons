@@ -1,206 +1,191 @@
 ### Quality of Life functions for Seurat ###
 
-require(ggplot2)
-require(dplyr)
-require(cowplot)
-require(Seurat)
-require(fgsea)
-require(scales)
+# ggplot themes for consistency
+FAMILY = "Arial"
+FACE = "bold"
+
+theme_dotplot = theme_bare+
+  theme(panel.grid.major = element_line(color = "#e0e0e0"))
+
+theme_umap <- theme(legend.text=element_text(size=20, family = FAMILY),
+                    axis.text=element_text(size=18, family = FAMILY),
+                    axis.title=element_text(size=20, family = FAMILY),
+                    plot.title = element_text(size=25, hjust = 0.5, family = FAMILY))
+
+theme_bare <- theme(axis.title.x = element_blank(), axis.title.y = element_blank(),
+                    axis.text = element_text(family = FAMILY, face = FACE))
 
 
-###______________________________________###
-###   A more convenient AddModuleScore   ###
+#' Add a Gene Module Score
+#'
+#' This function adds a gene module score to a Seurat object.
+#' Built off the Seurat-native AddModuleScore() function. Unlike AddModuleScore(),
+#' this function generates the new column with the exact string given.
+#'
+#' @import Seurat
+#' @param obj Seurat object to be scored
+#' @param geneset Vector of gene symbols
+#' @return Seurat object with calculated module score as meta.data column
+#' @export
 
-#IN:      Seurat Object       (Must be self-replacing, i.e.   obj <- fxn(obj)  )
-#         Vector of module component genes
-#         Name for your module
-#OUT:     Seurat object w/ new module score in meta.data
+add_Module = function(obj, genelist, labels){
 
-
-add_Module = function(obj, geneset, label){
-
-  label_exists = label %in% colnames(obj@meta.data)
-  if(label_exists){print(paste0("Overwriting existing label: ", label))}
+  labels_preexist = labels %in% colnames(obj@meta.data)
+  preexisting = labels[labels_preexist]
+  if(any(labels_preexist)){
+    print(paste0("Overwriting existing label(s): ", paste(preexisting, collapse = ", ")))
+  }
 
   obj = AddModuleScore(obj,
-                       features = list(geneset),
-                       name = label)
-  auto_label = paste0(label, 1)
-  obj@meta.data[[label]]= obj@meta.data[[auto_label]]
-  removal = names(obj@meta.data) == auto_label
-  obj@meta.data = obj@meta.data[,!removal]
+                       features = genelist,
+                       name = labels)
 
-  label_correct = label %in% colnames(obj@meta.data)
-  if(!label_correct){stop("Label could not be generated in the object@meta.data...")}
+  for (num in seq_along(labels)){
+    label = labels[num]
+    generated_label = paste0(label, num)
+    obj@meta.data[[label]] = obj@meta.data[[generated_label]]
+    generated_column_number = which(colnames(obj@meta.data) == generated_label)
+    col2remove = colnames(obj@meta.data) == generated_label
+    obj@meta.data = obj@meta.data[,!col2remove]
+  }
 
-  return(obj)
+  labels_exist = labels %in% colnames(obj@meta.data)
+  if(!all(labels_exist)){stop("Label could not be generated in the object@meta.data...")}
+  else
+    return(obj)
 }
 
-### Stacked Vln  ###
-stacked_vln <- function(obj, feats, clusters, alt.condition.names=c()){
-  #adjust x axis names if desired
-  sample_names <- levels(obj@meta.data$Sample)
-  if (length(alt.condition.names) != 0){
-    sample_names= alt.condition.names
-    print("Alternative condition names given: ")
-    print(alt.condition.names)
-  }
 
-  #Check if given clusters match obj clusters
-  if (all(clusters %in% obj@active.ident) == FALSE){
-    stop("Given clusters do not match object clusters!")
-  }
-
-  #dummy df
-  ddf <- data.frame(x=c(0,1), y=c(0,1))
-  #make plots
-  stat_line <-stat_summary(fun.y = mean, geom='crossbar', size = .4, colour = "red")
-  plots <- list()
-  for (feature_number in 1:length(feats)){
-    labelname <- paste0(feats[feature_number], "_Label")
-    plots[[labelname]] <- ggplot(ddf)+annotate("text", family="Arial", x = 1, y = .5, size=8, label = feats[feature_number], hjust=1)+xlim(0,1)+ylim(0,1)+theme_void()
-    for (cluster_number in 1:length(clusters)){
-      plotname <- paste0(feats[feature_number], "_", clusters[cluster_number])
-      plots[[plotname]] <- VlnPlot(obj, features = feats[feature_number], group.by = "sample", idents = c(clusters[cluster_number]), pt.size = 0.01)+
-        stat_line+theme_bare+
-        theme(plot.title = element_blank(), axis.text.x = element_text(angle = 0, hjust = 0.5, family = "Arial"), legend.position = 'none')+
-        scale_x_discrete(labels=sample_names)
-    }
-  }
-
-  cluster_labels <- list()
-  cluster_labels[["Empty"]] <- ggplot(ddf)+theme_void()
-  for (num in 1:length(clusters)){
-    cluster_labels[[clusters[num]]] <-  ggplot(ddf)+annotate("text", x = .5, y = .25, size=8, label = clusters[num], hjust=0.5)+xlim(0,1)+ylim(0,1)+theme_void()
-  }
-
-  plots <- c(cluster_labels, plots)
-  print(names(plots))
-  plot_grid(plotlist = plots, ncol = length(clusters)+1)
-}
-
-###__________________###
-###  ggplot2 themes  ###
-
-ppg_family <- "Arial"
-ppg_face <- "bold"
-
-theme_dotplot <- theme(axis.title.x = element_blank(), axis.title.y = element_blank(), axis.text = element_text(family = "Arial", face = "bold"),
-                       panel.grid.major = element_line(color = "#e0e0e0"))
-
-umap_theme <- theme(legend.text=element_text(size=20, family = ppg_family),
-                    axis.text=element_text(size=18, family = ppg_family),
-                    axis.title=element_text(size=20, family = ppg_family),
-                    plot.title = element_text(size=25, hjust = 0.5, family = ppg_family))
-theme_bare <- theme(axis.title.x = element_blank(), axis.title.y = element_blank(), axis.text = element_text(family = ppg_family, face = ppg_face))
-
-
-big_color <- c(hue_pal()(10), "navy", "black", "grey", "red")
-
-###  Get genes from Go term downloads  ###
+#' Get genes from a downloadable Gene Ontology text file (MGI)
+#'
+#' This function reads a MGI formated GO file and extracts the genes that
+#' make up the gene ontology term.
+#'
+#' @import readr tools
+#' @param path file or directory path
+#' @export
 
 read_GO = function(path){
-  require(readr)
-  genename_synonyms = c("Symbol", "symbol", "SYMBOL", "Gene_Symbol", "Gene_symbol", "gene_symbol", "GENE_SYMBOL")
 
+  if(!file.exists(path)){stop("File path does not exist.")}
 
-  files = dir(path)
-  if(length(files) != 0){
-    files = paste0(path, files)
-    }
+  pathtype = (length(dir(path)) > 1) + 1
+  pathtype = switch(pathtype, "file", "directory")
+  print(paste0("Given path is a: ", pathtype))
+
+  files = NA
+  if (pathtype == "directory"){
+    files = paste0(path, dir(path))
+  }
   else{
     files = c(path)
   }
-  files_exist = file.exists(files)
-  if(!all(files_exist)){
-    stop(paste0("One or more files do not exist among:", paste(files,collapse = "\t")))
-    }
 
+  genename_synonyms = c("Symbol", "symbol", "SYMBOL", "Gene_Symbol", "Gene_symbol", "gene_symbol", "GENE_SYMBOL")
   GO_list = list()
   for(file in files){
     print(paste0("Reading file: ", paste(file, collapse = "\n")))
     df = read_tsv(file)
     genename_column = genename_synonyms[which(genename_synonyms %in% colnames(df))]
     genes = as.vector(df[[genename_column]])
-    GO_list[[file]] = genes
+    GO_list[[file_path_sans_ext(basename(file))]] = genes
   }
   return(GO_list)
 }
 
-
-# From a directory of tsv formated go term file, read all and add to list
-read_GO_directory = function(directory){
-  print(directory)
-  go_list = list()
-  for (file in dir(directory)){
-    name = tools::file_path_sans_ext(file)
-    go_list[[name]] = read_GO(file = paste0(directory, file))
-  }
-  return(go_list)
-}
-
-
 ###  GSEA on Seurat Marker list  ###
 
 #  use signed -log p value to rank
-run_GSEA = function(total_markers, genelist, use_signed_pvalue=TRUE){
-  total_markers = total_markers %>%
-    mutate(sign = sign(avg_log2FC)) %>%
-    mutate(signed_neg_log_padj = avg_log2FC * (-log10(p_val_adj)))%>%
-    arrange(desc(signed_neg_log_padj))
+# run_GSEA = function(total_markers, genelist, use_signed_pvalue=TRUE){
+#   total_markers = total_markers %>%
+#     mutate(sign = sign(avg_log2FC)) %>%
+#     mutate(signed_neg_log_padj = avg_log2FC * (-log10(p_val_adj)))%>%
+#     arrange(desc(signed_neg_log_padj))
+#
+#   total_markers$signed_neg_log_padj[which(is.infinite(total_markers$signed_neg_log_padj))] = 10000000 # this is jank
+#
+#   ranks = as.vector(total_markers$signed_neg_log_padj)
+#   names(ranks) = rownames(total_markers)
+#   output = list()
+#   output[["table"]]= fgsea(stats = ranks,
+#                            pathways = genelist)
+#   output[["plots"]] = list()
+#   for (num in seq_along(genelist)){
+#     output[["plots"]][[names(genelist)[num]]] = plotEnrichment(stats = ranks, pathway = genelist[[num]])
+#   }
+#   return(output)
+# }
 
-  total_markers$signed_neg_log_padj[which(is.infinite(total_markers$signed_neg_log_padj))] = 10000000 # this is jank
+#' Get percent nonzero expressing cells in Seurat obj
+#'
+#' This function fetches expression data for a given geneset and
+#' calculates the percentage of cells in the whole object with non-zero
+#' expression levels for each gene.
+#'
+#' @import
+#' @param obj Seurat object
+#' @param geneset Vector of genes
 
-  ranks = as.vector(total_markers$signed_neg_log_padj)
-  names(ranks) = rownames(total_markers)
-  output = list()
-  output[["table"]]= fgsea(stats = ranks,
-                           pathways = genelist)
-  output[["plots"]] = list()
-  for (num in seq_along(genelist)){
-    output[["plots"]][[names(genelist)[num]]] = plotEnrichment(stats = ranks, pathway = genelist[[num]])
-  }
-  return(output)
-}
-
-### Get nonzero percent  ###
-get_Nonzero = function(obj, genes, select_cells=NULL){
+percent_Nonzero = function(obj, geneset, select_cells=NULL){
   cells = colnames(obj)
   if(!(is.null(select_cells))){
     cells = selected_cells
   }
-  detected_genes = genes[which(genes %in% rownames(obj))]
+  detected_genes = geneset[which(geneset %in% rownames(obj))]
   data = FetchData(neuts, detected_genes, cells = cells)
   data = data.frame(percent_expressed = colMeans(data  > 0))*100
   return(data)
 }
 
+#' Find correlations between a query and a geneset
+#'
+#' This function calculates the Pearson correlation between a query gene and
+#' all detected genes in the Seurat object, returning a dataframe.
+#' Specify a gene subset to improve efficiency.
+#'
+#' @import dplyr
+#' @param obj
+#' @param query
+#' @param subset
+#' @export
 
-
-# Find gene correlations
-find_Correlations = function(obj, querry, gene_subset=NULL){
-  genes = c()
-  if(!(is.null(gene_subset))){
-    genes = gene_subset
+find_Correlations = function(obj, query, subset=NULL){
+  genes = rownames(obj@assays$RNA@data)
+  if(!(is.null(subset))){
+    genes = genes[which(genes %in% subset)]
   }
-  else{ genes = rownames(obj@assays$RNA@data)}
 
-  correlations = lapply(genes, FUN = function(gene){
-    cor(obj@assays$RNA@data[querry,], obj@assays$RNA@data[gene,])
+  cors = sapply(genes, FUN = function(gene){
+    cor(obj@assays$RNA@data[query,], obj@assays$RNA@data[gene,])
   })
-  names(correlations)=genes
-  return(correlations)
+
+  df = data.frame(r = unlist(cors))
+  df = df %>%
+    mutate(gene = rownames(df))%>%
+    arrange(r)
+  return(df)
 }
 
-#
-add_Annotation = function(obj, col_label, convert_vector){
+#' Add meta-data annotation
+#'
+#' This function uses cluster meta-data and a matching conversion vector to add
+#' a new annotation to a Seurat object's meta-data.
+#'
+#' @import stringr
+#' @param obj Seurat object
+#' @param col_label Name for new meta.data column
+#' @param convert Vector with values corresoning to reference index
+#' @param reference Meta.data column-name to use for cluster identity
+#' @export
+
+add_Annotation = function(obj, col_label, convert, reference = "seurat_clusters"){
   obj@meta.data[[col_label]] = NA
-  for (cluster_number in levels(obj@meta.data$seurat_clusters)){
+  levels_match = length(convert) == length(unique(obj@meta.data[[reference]]))
+  if(!levels_match){stop("Unequal number of cluster and conversion levels.")}
+
+  for (cluster_number in levels(obj@meta.data[[reference]])){
     index_num = as.numeric(cluster_number)+1
-    obj@meta.data[[col_label]][which(str_detect(obj@meta.data$seurat_clusters, cluster_number))] = convert_vector[index_num]
+    obj@meta.data[[col_label]][which(str_detect(obj@meta.data[[reference]], cluster_number))] = convert[index_num]
   }
   return(obj)
 }
-
-
-
