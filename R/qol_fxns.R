@@ -17,7 +17,7 @@ require(scales)
 #OUT:     Seurat object w/ new module score in meta.data
 
 
-clean_AddModuleScore = function(obj, geneset, label){
+add_Module = function(obj, geneset, label){
 
   label_exists = label %in% colnames(obj@meta.data)
   if(label_exists){print(paste0("Overwriting existing label: ", label))}
@@ -99,14 +99,34 @@ big_color <- c(hue_pal()(10), "navy", "black", "grey", "red")
 
 ###  Get genes from Go term downloads  ###
 
-read_GO = function(file){
+read_GO = function(path){
   require(readr)
-  df = read_tsv(file)
-  synonyms = c("Symbol", "symbol", "SYMBOL", "Gene_Symbol", "Gene_symbol", "gene_symbol", "GENE_SYMBOL")
-  present_synonym = synonyms[which(synonyms %in% colnames(df))]
-  genes = as.vector(df[[present_synonym]])
-  return(genes)
+  genename_synonyms = c("Symbol", "symbol", "SYMBOL", "Gene_Symbol", "Gene_symbol", "gene_symbol", "GENE_SYMBOL")
+
+
+  files = dir(path)
+  if(length(files) != 0){
+    files = paste0(path, files)
+    }
+  else{
+    files = c(path)
+  }
+  files_exist = file.exists(files)
+  if(!all(files_exist)){
+    stop(paste0("One or more files do not exist among:", paste(files,collapse = "\t")))
+    }
+
+  GO_list = list()
+  for(file in files){
+    print(paste0("Reading file: ", paste(file, collapse = "\n")))
+    df = read_tsv(file)
+    genename_column = genename_synonyms[which(genename_synonyms %in% colnames(df))]
+    genes = as.vector(df[[genename_column]])
+    GO_list[[file]] = genes
+  }
+  return(GO_list)
 }
+
 
 # From a directory of tsv formated go term file, read all and add to list
 read_GO_directory = function(directory){
@@ -144,7 +164,7 @@ run_GSEA = function(total_markers, genelist, use_signed_pvalue=TRUE){
 }
 
 ### Get nonzero percent  ###
-nonzero_percent = function(obj, genes, select_cells=NULL){
+get_Nonzero = function(obj, genes, select_cells=NULL){
   cells = colnames(obj)
   if(!(is.null(select_cells))){
     cells = selected_cells
@@ -158,7 +178,7 @@ nonzero_percent = function(obj, genes, select_cells=NULL){
 
 
 # Find gene correlations
-find_correlations = function(obj, querry, gene_subset=NULL){
+find_Correlations = function(obj, querry, gene_subset=NULL){
   genes = c()
   if(!(is.null(gene_subset))){
     genes = gene_subset
@@ -170,6 +190,16 @@ find_correlations = function(obj, querry, gene_subset=NULL){
   })
   names(correlations)=genes
   return(correlations)
+}
+
+#
+add_Annotation = function(obj, col_label, convert_vector){
+  obj@meta.data[[col_label]] = NA
+  for (cluster_number in levels(obj@meta.data$seurat_clusters)){
+    index_num = as.numeric(cluster_number)+1
+    obj@meta.data[[col_label]][which(str_detect(obj@meta.data$seurat_clusters, cluster_number))] = convert_vector[index_num]
+  }
+  return(obj)
 }
 
 
