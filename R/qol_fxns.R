@@ -1,20 +1,58 @@
 ### Quality of Life functions for Seurat ###
 
-# ggplot themes for consistency
-FAMILY = "Arial"
-FACE = "bold"
 
-theme_dotplot = theme_bare+
-  theme(panel.grid.major = element_line(color = "#e0e0e0"))
 
-theme_umap <- theme(legend.text=element_text(size=20, family = FAMILY),
-                    axis.text=element_text(size=18, family = FAMILY),
-                    axis.title=element_text(size=20, family = FAMILY),
-                    plot.title = element_text(size=25, hjust = 0.5, family = FAMILY))
+#' Generate ggplot2 themes for common Seurat plots
+#'
+#' This function provides custom themes for several
+#' common Seurat functions, making them presentation-
+#' ready.
+#'
+#' @import ggplot2
+#' @param plot_type
+#' @return ggplot2 theme
+#' @export
+theme_seurat = function(plot_type){
 
-theme_bare <- theme(axis.title.x = element_blank(), axis.title.y = element_blank(),
-                    axis.text = element_text(family = FAMILY, face = FACE))
+  family = "sans"
+  face = "bold"
 
+  plot_themes = list()
+  plot_themes[["base"]] = theme(axis.title.x = element_blank(),
+                               axis.title.y = element_blank(),
+                               axis.text = element_text(family = family, face = face),
+                               legend.text = element_text(family = family, face = face),
+                               legend.key.size = unit(1, 'cm'))
+  plot_themes[["dot"]] = plot_themes[["base"]]+
+    theme(panel.grid.major = element_line(color = "#e0e0e0"),
+          axis.text.x = element_text(size = 20),
+          axis.text.y = element_text(size = 20),
+          legend.text = element_text(size = 15),
+          legend.title = element_text(size = 15, face = face)
+          )
+  plot_themes[["dim"]] = plot_themes[["base"]]+
+    theme(legend.text=element_text(size=20),
+          axis.text=element_text(size=18),
+          axis.title=element_text(size=20),
+          plot.title = element_text(size=25, hjust = 0.5)
+    )
+  plot_themes[["vln"]] = plot_themes[["base"]]+
+    theme(axis.text.x = element_text(size = 20),
+          axis.text.y = element_text(size = 14),
+          strip.text = element_text(size = 20)
+    )
+
+  plot_types = names(plot_themes)
+  is_legit_type = plot_type %in% plot_types
+
+  if(!is_legit_type){
+    stop("Given plot_type doesn't match available themes!")
+  }
+
+
+  theme_out = plot_themes[[plot_type]]
+  return(theme_out)
+}
 
 #' Add a Gene Module Score
 #'
