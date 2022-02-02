@@ -50,7 +50,6 @@ theme_seurat = function(plot_type){
     stop("Given plot_type doesn't match available themes!")
   }
 
-
   theme_out = plot_themes[[plot_type]]
   return(theme_out)
 }
@@ -67,25 +66,24 @@ theme_seurat = function(plot_type){
 #' @return Seurat object with calculated module score as meta.data column
 #' @export
 
-add_Module = function(obj, genelist, labels){
-
+add_Module = function(obj, genelist){
+  labels = names(genelist)
   labels_preexist = labels %in% colnames(obj@meta.data)
-  preexisting = labels[labels_preexist]
   if(any(labels_preexist)){
-    print(paste0("Overwriting existing label(s): ", paste(preexisting, collapse = ", ")))
+    warning(paste0("Overwriting existing meta.data label(s): ",
+                   paste(labels[labels_preexist], collapse = ", ")))
   }
 
-  obj = AddModuleScore(obj,
-                       features = genelist,
-                       name = labels)
+  holder = AddModuleScore(obj,
+                          features = genelist,
+                          name = labels)
 
-  for (num in seq_along(labels)){
-    label = labels[num]
-    generated_label = paste0(label, num)
-    obj@meta.data[[label]] = obj@meta.data[[generated_label]]
-    generated_column_number = which(colnames(obj@meta.data) == generated_label)
-    col2remove = colnames(obj@meta.data) == generated_label
-    obj@meta.data = obj@meta.data[,!col2remove]
+  for (label in labels){
+    index = which(labels == label)
+    colnames(obj@meta.data) = gsub(colnames(obj@meta.data),
+                                   pattern = paste0(label, index),
+                                   replacement = label
+    )
   }
 
   labels_exist = labels %in% colnames(obj@meta.data)
