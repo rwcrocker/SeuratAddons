@@ -12,6 +12,7 @@
 #' @param plot_type
 #' @return ggplot2 theme
 #' @export
+
 theme_seurat = function(plot_type){
 
   family = "sans"
@@ -164,15 +165,23 @@ read_GO = function(path){
 #' @param obj Seurat object
 #' @param geneset Vector of genes
 
-percent_Nonzero = function(obj, geneset, select_cells=NULL){
-  cells = colnames(obj)
-  if(!(is.null(select_cells))){
-    cells = selected_cells
+percent_Nonzero = function(object, genes){
+  genes_legit = genes %in% rownames(object)
+
+  if(any(!genes_legit)){
+    warning(
+      paste0("Some genes not found in object: ",
+             paste(genes[!genes_legit], collapse = ", "))
+    )
   }
-  detected_genes = geneset[which(geneset %in% rownames(obj))]
-  data = FetchData(neuts, detected_genes, cells = cells)
-  data = data.frame(percent_expressed = colMeans(data  > 0))*100
-  return(data)
+
+  genes = genes[genes_legit]
+  counts = FetchData(object,
+                     vars = genes,
+                     slot = "counts")
+  percents = as.vector(colMeans(counts > 0))*100
+  names(percents) = genes
+  return(percents)
 }
 
 #' Find correlations between a query and a geneset
