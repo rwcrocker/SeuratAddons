@@ -1,7 +1,5 @@
 ### Quality of Life functions for Seurat ###
 
-
-
 #' Generate ggplot2 themes for common Seurat plots
 #'
 #' This function provides custom themes for several
@@ -54,7 +52,7 @@ theme_seurat = function(plot_type){
   return(theme_out)
 }
 
-#' Add a Gene Module Score
+#' Add a Gene Module Score without numeric tail
 #'
 #' This function adds a gene module score to a Seurat object.
 #' Built off the Seurat-native AddModuleScore() function. Unlike AddModuleScore(),
@@ -219,18 +217,23 @@ find_Correlations = function(obj, query, subset=NULL){
 #' @import stringr
 #' @param obj Seurat object
 #' @param col_label Name for new meta.data column
-#' @param convert Vector with values corresoning to reference index
-#' @param reference Meta.data column-name to use for cluster identity
+#' @param convert Named vector of annotations to act as look-up table
+#' @param reference Name of existing column in meta.data to use as reference data
 #' @export
 
 add_Annotation = function(obj, col_label, convert, reference = "seurat_clusters"){
-  obj@meta.data[[col_label]] = NA
-  levels_match = length(convert) == length(unique(obj@meta.data[[reference]]))
-  if(!levels_match){stop("Unequal number of cluster and conversion levels.")}
+  reference_match = all(unique(obj@meta.data[[reference]]) %in% names(convert))
+  if(!reference_match) stop("Error:  Reference and convert names do not match.")
 
-  for (cluster_number in levels(obj@meta.data[[reference]])){
-    index_num = as.numeric(cluster_number)+1
-    obj@meta.data[[col_label]][which(str_detect(obj@meta.data[[reference]], cluster_number))] = convert[index_num]
-  }
+  overwrite_needed = col_label %in% colnames(obj@meta.data)
+  if(overwrite_needed) warning(paste0("Overwriting existing meta.data column meta.data[[\'", col_label), "\']].")
+
+  obj@meta.data[[col_label]] = NA
+  new_column = convert[obj@meta.data[[reference]]]
+
+  legit_column = length(new_column) == nrow(obj@meta.data)
+  if(!legit_column) stop("Error:  Length of new column does not match dimension of object meta.data")
+
+  obj@meta.data[[col_label]] = new_column
   return(obj)
 }
