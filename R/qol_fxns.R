@@ -11,7 +11,7 @@
 #' @return ggplot2 theme
 #' @export
 
-theme_seurat = function(plot_type){
+theme_seurat = function(plot_type="base"){
 
   family = "sans"
   face = "bold"
@@ -237,3 +237,9 @@ add_Annotation = function(obj, col_label, convert, reference = "seurat_clusters"
   obj@meta.data[[col_label]] = new_column
   return(obj)
 }
+
+#'
+#'
+
+
+
