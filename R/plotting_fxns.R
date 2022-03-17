@@ -1,18 +1,5 @@
 # Plotting Functions
 
-
-# ggplot themes
-FAMILY = "Arial"
-FACE = "bold"
-theme_bare <- theme(axis.title.x = element_blank(), axis.title.y = element_blank(),
-                    axis.text = element_text(family = FAMILY, face = FACE))
-theme_dotplot <- theme_bare+
-  theme(panel.grid.major = element_line(color = "#e0e0e0"))
-umap_theme <- theme_bare +
-  theme(legend.text=element_text(size=20, family = FAMILY),
-        plot.title = element_text(size=25, hjust = 0.5, family = FAMILY))
-
-
 #' Plot QC metrics for Seurat Object
 #'
 #' This function plots common QC metrics (nUMI, nGene,nGene:nUMI, and mitoRatio)
@@ -331,42 +318,8 @@ plot_composition = function(obj,
 }
 
 
-#ENRICHR PLOTTING
-##take a DF and make a bar plot
-enrichment_bar <- function(df, title=""){
-  df$Term <- factor(df$Term, levels = rev(df$Term))
-  df <- df[which(df$P.value <=0.05),]
-  anno <- ""
-  if (length(df$P.value) > 20){
-    anno <- paste0( (length(df$P.value) - 20), " more\nwith padj < 0.05")
-    df <- df[1:20,]
-  }
-
-  plot <- ggplot(df, aes(x=-log10(P.value), y=Term))+
-    geom_col()+geom_vline(xintercept = -log10(0.05), color="red", size=1.25)+
-    ggtitle(title)+
-    annotate("text", x = (-log10(df$P.value[1])*.75), y=1, label=anno)+
-    theme_bw()+
-    theme(text = element_text(family = "Arial", face = "bold"),
-          axis.title.y = element_blank(),
-          axis.text.y = element_text(size = 10),
-          plot.title.position = "plot", plot.title = element_text(hjust = 0.5))
-  return(plot)
-}
-
-#take a list of dfs and make plots for each
-enrichment_bar_list <- function(df_list, title_prefix=""){
-  plot_list <- list()
-  for (df_num in 1:length(df_list)){
-    df_name <- names(df_list)[df_num]
-    plot_list[[df_name]] <- enrichment_bar(df_list[[df_name]], title = paste0(title_prefix, " ", df_name))
-  }
-  return(plot_list)
-}
-
 ### VlnPlot with associated nonzero percent
 vln_nonzero_plot = function(obj, gene, plot_ymax = NULL){
-
 
   # Assign ylim if given
   if (!(is.null(plot_ymax))){
