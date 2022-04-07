@@ -1,5 +1,4 @@
-##_________________________________________###
-###   Generate Cell Distribution Metrics    ###
+# General Plotting Fxns
 
 #' Plot differences in cell composition
 #'
@@ -53,37 +52,33 @@ plot_composition = function(obj, group.by, split.by, format = "pie", group.level
   return(plot)
 }
 
+#' Plot percent of cells with any detectable expression
+#' @import ggplot2
+#' @param obj Seurat object
+#' @param gene Single gene name
+#' @param x.margin X margin size
+#' @param y.margin Y margin size
+#' @param title.margin Title margin from rectangle
+#' @param title.size Title text size
+#' @param color Color of percent fill
+#' @export
+#'
 
-### VlnPlot with associated nonzero percent
-vln_nonzero_plot = function(obj, gene, plot_ymax = NULL){
+plot_Nonzero = function(obj, gene, x.margin=5, y.margin=0, title.margin = 5, title.size = 8, color = "blue"){
+  df = data.frame(
+    pct = percent_Nonzero(obj, genes = gene),
+    gene = gene
+  )
+  df$label = paste0(round(df$pct), "%")
 
-  # Assign ylim if given
-  if (!(is.null(plot_ymax))){
-    plot = VlnPlot(obj, features = gene, flip = T, y.max = plot_ymax)+
-      theme(legend.position = "none")+theme_bare
-  }
-  # Grab pre-assigned ylim if not given
-  else{
-    plot = VlnPlot(obj, features = gene, flip = T)+
-      theme(legend.position = "none")+theme_bare
-    plot_ymax = ggplot_build(plot)$layout$panel_params[[1]]$y.range[2]
-  }
-  plot_ymax_buffered = plot_ymax * .95 #add buffer
-
-  # get nonzero expression percentage
-  nonzero = unlist(nonzero_percent(obj = obj, genes = gene))
-  nonzero_decimal = nonzero / 100
-
-  # Add nonzero plot
-  plot = plot+
-    geom_rect(aes(xmin=1.75, xmax=2.25, ymin=nonzero_decimal*plot_ymax_buffered, ymax=plot_ymax_buffered),
-              color="black", fill="white")+
-    geom_rect(aes(xmin=1.75, xmax=2.25, ymin=0, ymax=nonzero_decimal*plot_ymax_buffered),
-              color="black", fill = "grey")+
-    geom_text(aes(x=2, y=.5*plot_ymax_buffered,
-                  label = paste0(round(nonzero, digits = 1), " %")))
-
-  print(plot)
+  plot = ggplot(df)+
+    geom_rect(aes(xmin=-1, xmax=1, ymin=0, ymax=100), color="black", size = 1.5, fill="light grey")+
+    geom_rect(aes(xmin=-1, xmax=1, ymin=0, ymax=pct), color="black", size = 1.5, fill=color)+
+    geom_text(aes(x=0, y=pct/2, label = label), color = "white", size = 12)+
+    geom_text(aes(x=0, y=100+title.margin, label = "Percent\nNon-Zero"), color = "black", size = title.size, vjust=0, fontface="bold")+
+    ylim(0-y.margin,100+y.margin+title.margin)+
+    xlim(-1*x.margin, x.margin)+
+    theme_void()+theme(text = element_text(face = "bold"))
+  return(plot)
 }
-
 
