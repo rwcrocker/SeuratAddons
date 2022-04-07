@@ -40,6 +40,18 @@ theme_seurat = function(plot_type="base"){
           axis.text.y = element_text(size = 14),
           strip.text = element_text(size = 20)
     )
+  plot_themes[["comp"]] = plot_themes[["base"]]+
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          axis.title = element_blank(),
+          panel.grid = element_blank(),
+          panel.background = element_rect(fill = "white"),
+          plot.background = element_rect(fill = "white"),
+          legend.background = element_rect(fill = "white"),
+          strip.background = element_rect(fill = "white"),
+          strip.text = element_text(family = family, face = face, size = 12),
+          legend.title = element_blank()
+    )
 
   plot_types = names(plot_themes)
   is_legit_type = plot_type %in% plot_types
