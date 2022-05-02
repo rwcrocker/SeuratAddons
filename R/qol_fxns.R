@@ -221,37 +221,4 @@ find_Correlations = function(obj, query, subset=NULL){
   return(df)
 }
 
-#' Add meta-data annotation
-#'
-#' This function uses cluster meta-data and a matching conversion vector to add
-#' a new annotation to a Seurat object's meta-data.
-#'
-#' @import stringr
-#' @param obj Seurat object
-#' @param col_label Name for new meta.data column
-#' @param convert Named vector of annotations to act as look-up table
-#' @param reference Name of existing column in meta.data to use as reference data
-#' @export
-
-add_Annotation = function(obj, col_label, convert, reference = "seurat_clusters"){
-  reference_match = all(unique(obj@meta.data[[reference]]) %in% names(convert))
-  if(!reference_match) stop("Error:  Reference and convert names do not match.")
-
-  overwrite_needed = col_label %in% colnames(obj@meta.data)
-  if(overwrite_needed) warning(paste0("Overwriting existing meta.data column meta.data[[\'", col_label), "\']].")
-
-  obj@meta.data[[col_label]] = NA
-  new_column = convert[obj@meta.data[[reference]]]
-
-  legit_column = length(new_column) == nrow(obj@meta.data)
-  if(!legit_column) stop("Error:  Length of new column does not match dimension of object meta.data")
-
-  obj@meta.data[[col_label]] = new_column
-  return(obj)
-}
-
-#'
-#'
-
-
 
