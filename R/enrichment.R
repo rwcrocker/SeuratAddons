@@ -71,5 +71,5 @@ plot_enrichr = function(df, ntop, fill_by = "Overlap", title = NULL, term_char=1
     theme(legend.title = element_text(),
           plot.title = element_text())
 
-  print(plot)
+  return(plot)
 }
