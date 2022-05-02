@@ -2,52 +2,91 @@
 
 #' Plot differences in cell composition
 #'
-#' This function plots the distribution of cell populations in a Seurat object,
-#' grouping by a meta.data factor column.
-#'
 #' @import dplyr ggplot2
 #' @param obj Seurat object
 #' @param group.by Meta.data column name to annotate
 #' @param split.by Meta.data column name to split plots
-#' @param format Format of output plot. Acceptable formats: "pie", "bar".
+#' @param as.pie Output plot as pie chart, defaults to FALSE
 #' @param group.levels Vector of levels to order group.by with
 #' @param split.levels Vector of levels to order split.by with
+#' @param label Labels to be plotted on plot instead of in legend, defaults to FALSE
+#' @param label.pct Label to be plotted with proportion, defaults to FALSE
 #' @export
 
-plot_composition = function(obj, group.by, split.by, format = "pie", group.levels=NULL, split.levels=NULL){
+plot_composition = function(obj, group.by, split.by=NULL, as.pie = FALSE, group.levels=NULL, split.levels=NULL, label = FALSE, label.pct = FALSE){
   df = obj@meta.data
+  calculate_prop = function(vec){
+    t = prop.table(table(vec))
+    out = as.vector(t)
+    names(out) = names(t)
+    return(out)
+  }
+
+  # Check for erroneous inputs
   vars_real = all(c(group.by, split.by) %in% colnames(df))
   if(!vars_real) stop("Group.by or split.by are not a meta.data column.")
-  vars_legit = every(df[c(group.by, split.by)], ~is.character(.x)|is.factor(.x))
+  vars_legit = every(df[c(group.by, split.by)], ~ is.character(.x) | is.factor(.x))
   if(!vars_legit) stop("Group.by or split.by are not character/vector columns.")
 
-  calculate_prop = function(vec){prop.table(table(vec))}
+  # Dynamically set groups/splits
+  groups = unique(df[[group.by]])
 
-  usplits = unique(df[[split.by]])
-  ugroups = unique(df[[group.by]])
+  splits = NULL
+  should_split = !is.null(split.by)
+  if(should_split){
+    splits = unique(df[[split.by]])
+    props = map(splits,
+                function(split){
+                  sub_df = df %>%
+                    filter(get(split.by) == split)
+                  sub_prop = calculate_prop(sub_df[[group.by]])
+                  return(sub_prop)
+                }
+    )
+    props = unlist(props)
+  }
 
-  props = map(usplits, function(usplit){
-    sub_df = df %>%
-      filter(get(split.by) == usplit)
-    sub_prop = calculate_prop(sub_df[[group.by]])
-    return(sub_prop)
-  })
-  props = unlist(props)
+  else{
+    props = calculate_prop(df[[group.by]])
+  }
 
+  # Generate proportion dataframe to plot
   prop_df = data.frame(
-    split = rep(usplits, each=length(unique(ugroups))),
     group = names(props),
     prop = props
   )
+  prop_df$label = paste0(round(prop_df$prop*100, 1), "% ", prop_df$group)
+
+  if(!is.null(splits)){
+    prop_df$split = rep(splits, each=length(unique(groups)))
+  }
+
+  # Organize levels by proportion (big on top)
+  prop_df = prop_df %>%
+    arrange(desc(prop))
+  prop_df$group = factor(prop_df$group, levels = unique(prop_df$group))
 
   if(!is.null(split.levels)) prop_df$split = factor(prop_df$split, levels = split.levels)
   if(!is.null(group.levels)) prop_df$group = factor(prop_df$group, levels = group.levels)
 
-  plot = ggplot(prop_df)+
-    geom_col(aes(x="", y=prop, fill = group))+
-    facet_grid(~split)+
+  # Plotting with conditionals for provided split.by, format, and label
+  plot = ggplot(prop_df, aes(x = "", y = prop, fill = group, label = label))+
+    geom_col()+
     theme_seurat("comp")
-  if(format == "pie") plot = plot + coord_polar(theta = "y")
+  if(!is.null(splits)){plot = plot+facet_grid(~split)}
+  if(as.pie){plot = plot+coord_polar(theta = "y")}
+  if(label){
+    if(label.pct){
+      plot = plot+
+        geom_text(aes(label = label), position = position_stack(vjust = 0.5))+
+        theme(legend.position = "none")
+    }
+    else{
+      plot = plot+
+        geom_text(aes(label = group), position = position_stack(vjust = 0.5))+
+        theme(legend.position = "none")
+    }
+  }
 
   return(plot)
 }
