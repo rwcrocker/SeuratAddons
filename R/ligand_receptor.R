@@ -1,14 +1,25 @@
 # Ligand-Receptor analysis functions
 
+#' Wrapper for FindMarkers() with formating for downstream LR analysis
 #'
-#'
+#'@import dplyr magrittr purrr Seurat
+#'@param obj Seurat object
+#'@param annotation Column name of object meta.data to annotate identities by
+#'@param condition Column name of object meta.data to test DE against
+#'@param reference Value of condition column to use as reference for DE
+#'@param experimental Value of condition column to use as experimental condition for DE
+#'@param padj.cut Threshold for adjusted p-value
+#'@param log2fc.cut Threshold for log2-fold-change
+#'@return A single, merged DF of DEGs across every identity
+#'@export
 get_all_degs = function(obj, annotation, condition, reference, experimental, padj.cut=0.05, log2fc.cut=0.1){
   cols_legit = annotation %in% colnames(obj@meta.data) & condition %in% colnames(obj@meta.data)
   if(!cols_legit){stop("Annotation & Condition need to be columns of the object meta.data!")}
 
   obj = SetIdent(obj, value = annotation)
-
   idents = unique(obj@meta.data[[annotation]])
+
+  # Iterate identities and find DEGs in each
   deglist = map(idents,
                 ~ FindMarkers(object = obj, subset.ident = .x,
                               group.by = condition,
@@ -18,6 +29,8 @@ get_all_degs = function(obj, annotation, condition, reference, experimental, pad
                   mutate(cluster = .x) %>%
                   rownames_to_column(var = "gene")
   )
+
+  # Combine into one df
   merged = reduce(deglist, rbind)
   merged = merged %>%
     mutate(id = paste0(gene, "_", cluster))
@@ -25,8 +38,13 @@ get_all_degs = function(obj, annotation, condition, reference, experimental, pad
 }
 
 
+#' Generate ligand-receptor table based on gene signatures
 #'
-#'
+#'@import stringr dplyr magrittr purrr
+#'@param signatures Output of Seurat function FindAllMarkers() with only.pos = T
+#'@param db_path Path to static CellTalk database as .tsv
+#'@return A LR table with labeled interactions
+#'@export
 analyze_LR = function(signatures, db_path){
   db = read_tsv(db_path)
 
@@ -82,8 +100,14 @@ analyze_LR = function(signatures, db_path){
 }
 
 
+#' Find DE'ed ligand-receptor pairs in LR table
 #'
-#'
+#'@import dplyr magrittr purrr
+#'@param lr_table Dataframe generated from analyze_LR()
+#'@param deg_table Dataframe generated from find_all_degs()
+#'@param db_path Path to static CellTalk database as .tsv
+#'@return A LR table with annotated DEGs
+#'@export
 crossreference_degs = function(lr_table, deg_table, db_path){
   db = read_tsv(db_path)
   lr_table = lr_table %>%
@@ -99,7 +123,7 @@ crossreference_degs = function(lr_table, deg_table, db_path){
     mutate(reflexive = ligand_origin == receptor_origin) %>%
     replace_na(list(from_signature = FALSE, both_de = FALSE))
 
-  # Get FC and p value for all DE'ed ids
+  # Logic for extracting FC & padj via DE'ed ids
   crossreference = function(id, column){
     if (id %in% deg_table$id){
       return(deg_table[[column]][deg_table[["id"]] == id])
@@ -108,6 +132,7 @@ crossreference_degs = function(lr_table, deg_table, db_path){
       return(NA)
   }
 
+  # Get FC & padj and add meta.data
   merged = merged %>%
     mutate(ligand_log2FC = map_dbl(merged$ligand_id, ~ crossreference(.x, "avg_log2FC"))) %>%
     mutate(ligand_padj = map_dbl(merged$ligand_id, ~ crossreference(.x, "p_val_adj"))) %>%

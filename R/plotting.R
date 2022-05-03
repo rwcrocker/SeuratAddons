@@ -92,7 +92,7 @@ plot_composition = function(obj, group.by, split.by=NULL, as.pie = FALSE, group.
 }
 
 #' Plot percent of cells with any detectable expression
-#' @import ggplot2
+#' @import ggplot2 Seurat
 #' @param obj Seurat object
 #' @param gene Single gene name
 #' @param x.margin X margin size
@@ -116,8 +116,9 @@ plot_Nonzero = function(obj, gene, x.margin=5, y.margin=0, title.margin = 5, tit
     geom_text(aes(x=0, y=pct/2, label = label), color = "white", size = 12)+
     geom_text(aes(x=0, y=100+title.margin, label = "Percent\nNon-Zero"), color = "black", size = title.size, vjust=0, fontface="bold")+
     ylim(0-y.margin,100+y.margin+title.margin)+
-    xlim(-1*x.margin, x.margin)+
-    theme_void()+theme(text = element_text(face = "bold"))
+    xlim(( x.margin * -1 ), x.margin)+
+    theme_void()+
+    theme(text = element_text(face = "bold"))
   return(plot)
 }
 

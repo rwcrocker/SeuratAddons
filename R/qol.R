@@ -7,7 +7,7 @@
 #' ready.
 #'
 #' @import ggplot2
-#' @param plot_type
+#' @param plot_type One of "base", "dot", "dim", "vln", or "comp"
 #' @return ggplot2 theme
 #' @export
 
@@ -109,7 +109,8 @@ add_Module = function(obj, genelist){
 #' make up the gene ontology term.
 #'
 #' @import readr tools
-#' @param path file or directory path
+#' @param path File or directory path
+#' @return List of gene vectors
 #' @export
 
 read_GO = function(path){
@@ -169,7 +170,7 @@ read_GO = function(path){
 #' calculates the percentage of cells in the whole object with non-zero
 #' expression levels for each gene.
 #'
-#' @import
+#' @import Seurat
 #' @param obj Seurat object
 #' @param geneset Vector of genes
 
@@ -199,9 +200,9 @@ percent_Nonzero = function(object, genes){
 #' Specify a gene subset to improve efficiency.
 #'
 #' @import dplyr
-#' @param obj
-#' @param query
-#' @param subset
+#' @param obj Seurat object
+#' @param query Vector of genes to assess
+#' @param subset Subset of total genes in obj to correlate against
 #' @export
 
 find_Correlations = function(obj, query, subset=NULL){

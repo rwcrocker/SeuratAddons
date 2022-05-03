@@ -1,9 +1,5 @@
 ### Functions for enrichR
 
-major_dbs = c("WikiPathways_2019_Mouse", "MSigDB_Hallmark_2020",
-                    "KEGG_2019_Mouse", "GO_Molecular_Function_2021",
-                    "GO_Cellular_Component_2021", "GO_Biological_Process_2021")
-
 #' Clean the dirty data output of enrichr()
 #' @import enrichR
 #' @import dplyr
@@ -42,7 +38,7 @@ clean_enrichR = function(df, padj_cutoff = 0.05){
 }
 
 #' Plot the output of the enrichR dataframe
-#' @import ggplot2
+#' @import ggplot2 dplyr
 #' @import dplyr
 #' @import magrittr
 #' @import ggprism
